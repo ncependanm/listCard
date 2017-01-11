@@ -16,6 +16,32 @@ use CardBundle\Form\CardType;
  */
 class CardController extends Controller
 {
+	
+	function encrypt($string) {
+		$output = false;
+		$encrypt_method = "AES-256-CBC";
+		$secret_key = "fe67d68ee1e09b47acd8810b880d537034c10c15344433a992b9c79002666844";
+		$secret_iv = "fdd3345455fffgffffhkkyoife67d68ee1e09b47acd8810b880d537034c10c15344433a992b9c79002666844";
+
+		$key = hash("sha256", $secret_key);
+		$iv = substr(hash("sha256", $secret_iv), 0, 16);
+		$output = openssl_encrypt($string, $encrypt_method, $key, 0, $iv);
+		$output = base64_encode($output);
+		return $output;
+	}
+
+	function decrypt($string) {
+		$output = false;
+		$encrypt_method = "AES-256-CBC";
+		$secret_key = "fe67d68ee1e09b47acd8810b880d537034c10c15344433a992b9c79002666844";
+		$secret_iv = "fdd3345455fffgffffhkkyoife67d68ee1e09b47acd8810b880d537034c10c15344433a992b9c79002666844";
+
+		$key = hash("sha256", $secret_key);
+		$iv = substr(hash("sha256", $secret_iv), 0, 16);
+		$output = openssl_decrypt(base64_decode($string), $encrypt_method, $key, 0, $iv);
+		return $output;
+	}
+	
     /**
      * Lists all Card entities.
      *
@@ -27,6 +53,9 @@ class CardController extends Controller
         $em = $this->getDoctrine()->getManager();
 
         $cards = $em->getRepository('CardBundle:Card')->findAll();
+		foreach ($cards as $value) {
+			$value->setNomor($this->decrypt($value->getNomor()));
+		}
 
         return $this->render('card/index.html.twig', array(
             'cards' => $cards,
@@ -48,6 +77,7 @@ class CardController extends Controller
         if ($form->isSubmitted() && $form->isValid()) {
 			if($this->validation($card->getNomor())){
 				$em = $this->getDoctrine()->getManager();
+				$card->setNomor($this->encrypt($card->getNomor()));
 				$em->persist($card);
 				$em->flush();
 
@@ -89,6 +119,7 @@ class CardController extends Controller
      */
     public function showAction(Card $card)
     {
+		$card->setNomor($this->decrypt($card->getNomor()));
         $deleteForm = $this->createDeleteForm($card);
 
         return $this->render('card/show.html.twig', array(
@@ -106,12 +137,14 @@ class CardController extends Controller
     public function editAction(Request $request, Card $card)
     {
         $deleteForm = $this->createDeleteForm($card);
+		$card->setNomor($this->decrypt($card->getNomor()));
         $editForm = $this->createForm('CardBundle\Form\CardType', $card);
         $editForm->handleRequest($request);
 
         if ($editForm->isSubmitted() && $editForm->isValid()) {
 			if($this->validation($card->getNomor())){
 				$em = $this->getDoctrine()->getManager();
+				$card->setNomor($this->encrypt($card->getNomor()));
 				$em->persist($card);
 				$em->flush();
 
